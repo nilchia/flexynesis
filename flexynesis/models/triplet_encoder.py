@@ -587,7 +587,7 @@ class MultiTripletNetwork(pl.LightningModule):
                         n_steps=steps_or_samples,
                     )
                     attributions = attributions.split(layer_sizes, dim=3)
-                elif method == "GradientShape":
+                elif method == "GradientShap":
                     attributions = explainer.attribute(
                         input_data,
                         baseline,
