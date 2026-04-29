@@ -152,7 +152,6 @@ def generate_coexpression_network(
     method="spearman",
     min_correlation=0.3,
     top_k=10,
-    remove_self_loops=True,
     remove_duplicates=True,
 ):
     """
@@ -164,7 +163,6 @@ def generate_coexpression_network(
         method: Correlation method ('spearman' or 'pearson')
         min_correlation: Minimum absolute correlation threshold
         top_k: Number of top neighbors to keep per gene
-        remove_self_loops: Remove self-correlations
         remove_duplicates: Remove duplicate edges
     """
     print("=" * 70)
@@ -358,7 +356,6 @@ Input file format:
         method=args.method,
         min_correlation=args.min_correlation,
         top_k=args.top_k,
-        remove_self_loops=not args.keep_self_loops,
         remove_duplicates=not args.keep_duplicates,
     )
 
