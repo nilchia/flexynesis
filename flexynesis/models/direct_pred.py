@@ -593,8 +593,8 @@ class DirectPred(pl.LightningModule):
                         }
                     )
                 )
-                # Raw per-sample attributions: abs_attr[i][j] has shape (1, n_samples, n_features)
-                raw_importances = abs_attr[i][j].squeeze(0).detach().numpy()
+                # Raw per-sample attributions: signed values (not abs) for beeswarm plots
+                raw_importances = processed_attributions[i][j].cpu().squeeze(0).detach().numpy()
                 raw_df = pd.DataFrame(raw_importances, index=all_sample_ids, columns=features)
                 raw_df.index.name = "sample_id"
                 raw_df = raw_df.reset_index().melt(

@@ -686,9 +686,8 @@ class MultiTripletNetwork(pl.LightningModule):
                         }
                     )
                 )
-                # Raw per-sample: abs_attr[i][j] shape is (3, n_samples, n_features) after squeeze;
-                # index 0 = anchor branch
-                raw_importances = abs_attr[i][j][0].detach().numpy()  # (n_samples, n_features)
+                # Raw per-sample: signed values (not abs) for beeswarm plots; index 0 = anchor branch
+                raw_importances = processed_attributions[i][j].cpu()[0].detach().numpy()  # (n_samples, n_features)
                 raw_df = pd.DataFrame(raw_importances, index=sample_ids, columns=features)
                 raw_df.index.name = "sample_id"
                 raw_df = raw_df.reset_index().melt(
