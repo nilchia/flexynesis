@@ -343,6 +343,10 @@ def main():
         Comma-separated target variables from `clin.csv`. Optional if survival
         variables are provided.
 
+      --covariates (str):
+        Comma-separated variables from `clin.csv` to use as feature covariates.
+        Not supported for GNN models (will be ignored). Default: `None`.
+
       --surv_event_var (str):
         Column in `clin.csv` used as event/status indicator (survival).
 
