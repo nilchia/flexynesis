@@ -66,6 +66,7 @@ class supervised_vae(pl.LightningModule):
             else self.target_variables
         )
         self.feature_importances = {}
+        self.feature_importances_raw = {}
 
         # sometimes the model may have exploding/vanishing gradients leading to NaN values
         self.nan_detected = False
@@ -628,8 +629,10 @@ class supervised_vae(pl.LightningModule):
 
         aggregated_attributions = [[] for _ in range(num_class)]
 
+        all_sample_ids = []
         for batch in dataloader:
-            dat, _, _ = batch
+            dat, _, sample_ids = batch
+            all_sample_ids.extend(list(sample_ids))
             x_list = [to_device_safe(dat[x], device) for x in dat.keys()]
             input_data = tuple([data.unsqueeze(0).requires_grad_() for data in x_list])
 
@@ -718,6 +721,7 @@ class supervised_vae(pl.LightningModule):
 
         # combine into a single data frame
         df_list = []
+        raw_df_list = []
         for i in range(num_class):
             for j in range(len(layers)):
                 features = self.dataset.features[layers[j]]
@@ -739,7 +743,21 @@ class supervised_vae(pl.LightningModule):
                         }
                     )
                 )
+                # Raw per-sample attributions: abs_attr[i][j] has shape (1, n_samples, n_features)
+                raw_importances = abs_attr[i][j].squeeze(0).detach().numpy()
+                raw_df = pd.DataFrame(raw_importances, index=all_sample_ids, columns=features)
+                raw_df.index.name = "sample_id"
+                raw_df = raw_df.reset_index().melt(
+                    id_vars="sample_id", var_name="name", value_name="importance"
+                )
+                raw_df["target_variable"] = target_var
+                raw_df["target_class"] = i
+                raw_df["target_class_label"] = target_class_label
+                raw_df["layer"] = layers[j]
+                raw_df_list.append(raw_df)
         df_imp = pd.concat(df_list, ignore_index=True)
 
         # save scores in model
         self.feature_importances[target_var] = df_imp
+        df_raw = pd.concat(raw_df_list, ignore_index=True)
+        self.feature_importances_raw[target_var] = df_raw

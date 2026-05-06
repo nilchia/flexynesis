@@ -1381,6 +1381,30 @@ def main():
                     header=True,
                     index=False,
                 )
+                # Save raw per-sample attributions
+                df_raw = pd.concat(
+                    [
+                        model.feature_importances_raw[x]
+                        for x in model.target_variables
+                    ],
+                    ignore_index=True,
+                )
+                df_raw["explainer"] = explainer
+                df_raw.to_csv(
+                    os.path.join(
+                        args.outdir,
+                        ".".join(
+                            [
+                                args.prefix,
+                                "feature_importance_raw",
+                                explainer,
+                                "csv",
+                            ]
+                        ),
+                    ),
+                    header=True,
+                    index=False,
+                )
 
         # print known/predicted labels
         if train_dataset is not None:

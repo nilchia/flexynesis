@@ -62,6 +62,7 @@ class MultiTripletNetwork(pl.LightningModule):
         self.ann = dataset.ann
         self.variable_types = dataset.variable_types
         self.feature_importances = {}
+        self.feature_importances_raw = {}
         self.device_type = device_type
         # The first target variable is the main variable that dictates the triplets
         # it has to be a categorical variable
@@ -657,7 +658,10 @@ class MultiTripletNetwork(pl.LightningModule):
         imp = [[a.mean(dim=1) for a in attr_class] for attr_class in abs_attr]
         # move the model also back to cpu (if not already on cpu)
         self.to("cpu")
+        # sample IDs correspond to anchor samples (valid_indices in the triplet dataset)
+        sample_ids = [dataset.samples[idx] for idx in triplet_dataset.valid_indices]
         df_list = []
+        raw_df_list = []
         for i in range(num_class):
             for j in range(len(layers)):
                 features = dataset.features[layers[j]]
@@ -682,5 +686,20 @@ class MultiTripletNetwork(pl.LightningModule):
                         }
                     )
                 )
+                # Raw per-sample: abs_attr[i][j] shape is (3, n_samples, n_features) after squeeze;
+                # index 0 = anchor branch
+                raw_importances = abs_attr[i][j][0].detach().numpy()  # (n_samples, n_features)
+                raw_df = pd.DataFrame(raw_importances, index=sample_ids, columns=features)
+                raw_df.index.name = "sample_id"
+                raw_df = raw_df.reset_index().melt(
+                    id_vars="sample_id", var_name="name", value_name="importance"
+                )
+                raw_df["target_variable"] = target_var
+                raw_df["target_class"] = i
+                raw_df["target_class_label"] = target_class_label
+                raw_df["layer"] = layers[j]
+                raw_df_list.append(raw_df)
         df_imp = pd.concat(df_list, ignore_index=True)
         self.feature_importances[target_var] = df_imp
+        df_raw = pd.concat(raw_df_list, ignore_index=True)
+        self.feature_importances_raw[target_var] = df_raw

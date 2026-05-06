@@ -85,6 +85,7 @@ class GNN(pl.LightningModule):
         self.edge_index = dataset.edge_index
 
         self.feature_importances = {}
+        self.feature_importances_raw = {}
         self.use_loss_weighting = use_loss_weighting
 
         self.device_type = device_type
@@ -509,8 +510,10 @@ class GNN(pl.LightningModule):
         # MPS and CPU don't have detailed memory tracking like CUDA
 
         aggregated_attributions = [[] for _ in range(num_class)]
+        all_sample_ids = []
         for batch in dataloader:
             x, y_dict, samples = batch
+            all_sample_ids.extend(list(samples))
 
             # Ensure input data is on the correct device
             x = to_device_safe(x, device)
@@ -600,6 +603,7 @@ class GNN(pl.LightningModule):
         # MPS and CPU don't have detailed memory tracking like CUDA
 
         df_list = []
+        raw_df_list = []
         layers = list(getattr(dataset, "multiomic_dataset", dataset).dat.keys())
         for i in range(num_class):
             features = dataset.common_features
@@ -631,6 +635,24 @@ class GNN(pl.LightningModule):
                         }
                     )
                 )
+                # Raw per-sample: abs_attr[i] has shape (1, n_samples, n_nodes, n_layers) or (1, n_samples, n_nodes)
+                raw_all = abs_attr[i].squeeze(0).detach().numpy()  # (n_samples, n_nodes[, n_layers])
+                if raw_all.ndim == 2:
+                    raw_importances = raw_all  # single layer: (n_samples, n_nodes)
+                else:
+                    raw_importances = raw_all[:, :, layer_idx]  # multi-layer: (n_samples, n_nodes)
+                raw_df = pd.DataFrame(raw_importances, index=all_sample_ids, columns=features)
+                raw_df.index.name = "sample_id"
+                raw_df = raw_df.reset_index().melt(
+                    id_vars="sample_id", var_name="name", value_name="importance"
+                )
+                raw_df["target_variable"] = target_var
+                raw_df["target_class"] = i
+                raw_df["target_class_label"] = target_class_label
+                raw_df["layer"] = layer_name
+                raw_df_list.append(raw_df)
         df_imp = pd.concat(df_list, ignore_index=True)
+        df_raw = pd.concat(raw_df_list, ignore_index=True)
         # save the computed scores in the model
         self.feature_importances[target_var] = df_imp
+        self.feature_importances_raw[target_var] = df_raw
